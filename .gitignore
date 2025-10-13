@@ -9,6 +9,7 @@ __pycache__/
 
 # Файлы окружения с паролями и ключами
 .env
+.zip
 
 # Служебные файлы IDE (PyCharm)
 .idea/
@@ -18,3 +19,6 @@ __pycache__/
 logs/
 *.tmp
 *.log
+
+#Vosk Модели
+data/vosk_model/

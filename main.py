@@ -1,9 +1,13 @@
-from core.logger import logger
-from core import config
+from core.recognizer import Recognizer
 
 def main():
-    logger.info("Ассистент запущен.")
-    logger.info(f"Рабочая директория: {config.BASE_DIR}")
+    recog = Recognizer()
+
+    try:
+        recog.run()
+    except KeyboardInterrupt:
+        recog.stop()
 
 if __name__ == "__main__":
     main()
+
