@@ -1,0 +1,6 @@
+vosk #отвечает за офлайн speech-to-text
+pyaudio #для работы с микрофоном
+webrtcvad # определяет, есть ли в аудио голос или тишина
+setuptools # системный инструмент Python
+pvporcupine # picovoice, позволяет распознавать “wake words”
+playsound == 1.2.2 # для звуков
