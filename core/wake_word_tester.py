@@ -10,7 +10,7 @@ def play_beep():
     try:
         playsound(str(BEEP_WAKE[1]), block=False)
     except Exception as e:
-        print(f"⚠️ Ошибка воспроизведения звука: {e}")
+        print(f"Ошибка воспроизведения звука: {e}")
 
 def main():
 
@@ -43,7 +43,7 @@ def main():
 
         if result >= 0:
             play_beep()
-            print(f"✅ Активировано! Время реакции: {latency:.2f} мс")
+            print(f"Активировано! Время реакции: {latency:.2f} мс")
 
 if __name__ == "__main__":
     main()

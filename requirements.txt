@@ -4,3 +4,10 @@ webrtcvad # определяет, есть ли в аудио голос или 
 setuptools # системный инструмент Python
 pvporcupine # picovoice, позволяет распознавать “wake words”
 playsound == 1.2.2 # для звуков
+spacy
+sentence_transformers
+
+num2words
+word2number
+rapidfuzz
+pymorphy3

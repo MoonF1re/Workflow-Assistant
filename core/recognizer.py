@@ -7,7 +7,7 @@ import pvporcupine
 from vosk import Model, KaldiRecognizer
 from playsound import playsound
 from queue import Queue
-from core.config import WAKE_WORD, VOSK_MODEL_PATH, SAMPLE_RATE, BEEP_ANSWER, BEEP_WAKE, BEEP_START, ACCESS_KEY
+from core.config import WAKE_WORD, VOSK_MODEL_PATH, SAMPLE_RATE, BEEP_ANSWER, BEEP_WAKE, BEEP_START, ACCESS_KEY, LISTEN_TIME
 from core.logger import logger
 
 def play_random_start():
@@ -27,7 +27,7 @@ def play_random_answer():
 
 
 class Recognizer:
-    def __init__(self):
+    def __init__(self,  on_command=None):
         logger.info("Инициализация распознавателя...")
 
         # === Wake Word ===
@@ -50,6 +50,8 @@ class Recognizer:
             frames_per_buffer=self.porcupine.frame_length
         )
         self.stream.start_stream()
+
+        self.on_command = on_command
 
         self.command_queue = Queue()
         self.running = True
@@ -75,14 +77,12 @@ class Recognizer:
                 if command_text:
                     self.command_queue.put(command_text)
                     logger.info(f"Распознано: {command_text}")
-                logger.info("Ожидание следующего wake word...")
+
+                    if self.on_command:
+                        self.on_command(command_text)
 
     # --- Прослушивание команды ---
-    def listen_command(self, silence_timeout=3.0):
-        """
-        Слушает речь до тишины.
-        Возвращает текст команды.
-        """
+    def listen_command(self, silence_timeout=LISTEN_TIME):
         logger.info("Слушаю команду...")
         self.recognizer.Reset()
 
@@ -117,7 +117,6 @@ class Recognizer:
                     return None
 
     def get_command(self):
-        """Возвращает последнюю распознанную команду (если есть)."""
         if not self.command_queue.empty():
             return self.command_queue.get()
         return None
