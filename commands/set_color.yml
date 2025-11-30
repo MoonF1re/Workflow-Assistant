@@ -1,0 +1,6 @@
+name: set_color
+handler: handlers.lights.set_color
+slots:
+  - name: color
+    type: str
+    required: true

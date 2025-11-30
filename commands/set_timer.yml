@@ -1,0 +1,9 @@
+name: set_timer
+handler: handlers.timer.set_timer
+slots:
+  - name: minutes
+    type: int
+    required: true
+  - name: seconds
+    type: int
+    required: true
