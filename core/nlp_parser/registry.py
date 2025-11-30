@@ -28,6 +28,7 @@ class CommandSpec:
     handler: Optional[str] = None
     slots: List[SlotSpec] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
+    slot_hints: Dict[str, Any] = field(default_factory=dict)
     filepath: Optional[Path] = None
 
 
@@ -101,6 +102,8 @@ class Registry:
                 if isinstance(s, dict) and s.get("name"):
                     slots.append(SlotSpec.from_dict(s))
 
+            slot_hints = data.get("slot_hints", {})
+
             # load examples from examples/<name>.txt or .yml
             examples = self._load_examples_for(name)
 
@@ -109,6 +112,7 @@ class Registry:
                 handler=handler,
                 slots=slots,
                 examples=examples,
+                slot_hints= slot_hints,
                 filepath=p
             )
             if name in self.commands:
@@ -168,6 +172,8 @@ class Registry:
                 for ex in spec.examples:
                     obj = {"text": ex, "intent": name}
                     f.write(json.dumps(obj, ensure_ascii=False) + "\n")
+
+
 
 # ---------------- Demo ----------------
 if __name__ == "__main__":

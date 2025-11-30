@@ -11,3 +11,4 @@ num2words
 word2number
 rapidfuzz
 pymorphy3
+pyautogui

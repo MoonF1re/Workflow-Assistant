@@ -11,6 +11,7 @@ from core.recognizer import Recognizer
 from core.nlp_parser.normalizer import Normalizer
 from core.nlp_parser.registry import Registry
 from core.nlp_parser.intent_classifier import IntentClassifier
+from core.nlp_parser.slot_resolver import SlotResolver
 from core.nlp_parser.slot_llm import VikhrSlotExtractor
 from core.dispatcher import Dispatcher
 from core.config import NLP_MODEL_PATH, COMMANDS_DIR
@@ -57,7 +58,7 @@ def prepare_llm_extractor(backend: str = "ollama", backend_kwargs: dict = None) 
     backend_kwargs = backend_kwargs or {}
     if backend == "ollama":
         ollama_url = backend_kwargs.get("ollama_url", "http://localhost:11434")
-        return VikhrSlotExtractor(backend="ollama", ollama_url=ollama_url)
+        return VikhrSlotExtractor(backend="ollama", ollama_url=ollama_url, model_name='llama3:8b')
     elif backend == "llama_cpp":
         model_path = backend_kwargs.get("model_path")
         if not model_path:
@@ -70,6 +71,8 @@ def prepare_llm_extractor(backend: str = "ollama", backend_kwargs: dict = None) 
 # ----- Создание обработчика команд (вызывается Recognizer) -----
 def make_on_command(normalizer: Normalizer, registry: Registry, classifier: IntentClassifier,
                     llm_extractor: VikhrSlotExtractor, dispatcher: Dispatcher):
+    slot_resolver = SlotResolver(registry)
+
     def on_command(raw_text: str):
         t0 = time.perf_counter()
         try:
@@ -92,31 +95,60 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
             else:
                 print('-> интент: <не распознан>')
 
-            # 3) Если у интента есть слоты — вызываем LLM для извлечения
-            slot_spec = registry.get_slot_spec(intent_label) if intent_label else None
-            slots = {}
-            if slot_spec:
-                print("-> вызываю LLM для извлечения слотов...")
-                llm_res = llm_extractor.extract_slots(intent_label, normalized, slot_spec, example=None)
-                # ожидаем, что llm_res — dict с ключом "slots"
-                if isinstance(llm_res, dict):
-                    slots = llm_res.get("slots") or {}
-                    raw_llm = llm_res.get("raw", "")
+            # 3) Извлекаем слоты
+            cmd_spec = registry.find_command(intent_label)
+            slot_specs = registry.get_slot_spec(intent_label)
+
+            final_slots = {}
+
+            if slot_specs:
+                # --- ЭТАП 3.1: SlotResolver (Regex) ---
+                print("-> Запуск SlotResolver...")
+                regex_slots = slot_resolver.resolve(intent_label, normalized)
+                if regex_slots:
+                    print(f"   Regex нашел: {regex_slots}")
+
+                final_slots.update(regex_slots)
+
+                # Проверяем, каких обязательных слотов не хватает
+                required_names = {s['name'] for s in slot_specs if s.get('required')}
+                found_names = set(final_slots.keys())
+                missing_required = required_names - found_names
+
+                # --- ЭТАП 3.2: LLM (только если чего-то не хватает или вообще нет hints) ---
+                # Можно настроить логику: если hints есть, но они не сработали -> зовем LLM
+                # Или если hints покрыли все required -> LLM не зовем (экономия времени!)
+
+                regex_missed_everything = (len(slot_specs) > 0 and not final_slots)
+
+                if missing_required or regex_missed_everything:
+                    print(f"-> Не хватает обязательных слотов {missing_required}, вызываю LLM...")
+                    # Передаем пример из registry, если есть
+                    example_text = cmd_spec.examples[0] if cmd_spec.examples else None
+
+                    llm_res = llm_extractor.extract_slots(intent_label, normalized, slot_specs, example=example_text)
+
+                    llm_slots = llm_res.get("slots", {}) if isinstance(llm_res, dict) else {}
+                    print(f"   LLM вернул: {llm_slots}")
+
+                    # Объединяем.
+                    # СТРАТЕГИЯ: Regex (надежный) перезаписывает LLM (креативный), если ключи совпадают?
+                    # Или наоборот? Обычно Regex точнее.
+                    # Берем всё из LLM, а потом обновляем значениями из Regex
+                    merged = llm_slots.copy()
+                    merged.update(regex_slots)  # Приоритет у Regex
+                    final_slots = merged
                 else:
-                    raw_llm = str(llm_res)
-                if slots:
-                    print(f"LLM вернул: {json.dumps(slots, ensure_ascii=False)}")
-                else:
-                    print(f"LLM вернул (неудобный формат): {raw_llm!r}")
-            else:
-                print("-> слоты не требуются для этого интента")
+                    print("-> Все обязательные слоты найдены через Regex. LLM пропущен.")
+
+            print(f"Итоговые слоты: {final_slots}")
 
             # 4) Если есть handler — вызываем через dispatcher
             cmd_spec = registry.find_command(intent_label) if intent_label else None
             handler_ref = getattr(cmd_spec, "handler", None) if cmd_spec else None
             if handler_ref:
                 # передаём dispatcher найденные слоты и спецификацию слотов
-                res = dispatcher.call(handler_ref, slots, slot_specs=slot_spec, timeout=6.0)
+                res = dispatcher.call(handler_ref, final_slots, slot_specs=slot_specs, timeout=6.0)
                 if res["ok"]:
                     print(f"-> обработчик вернул: {res['result']}")
                 else:
@@ -177,7 +209,7 @@ def run_stdin_test(backend="ollama", backend_kwargs=None):
 
 # ----- Точка входа -----
 if __name__ == "__main__":
-    MODE = os.environ.get("ASSISTANT_MODE", "stdin")  # "mic" или "stdin"
+    MODE = os.environ.get("ASSISTANT_MODE", "mic")  # "mic" или "stdin"
     LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")
     LLM_KW = {}
     if LLM_BACKEND == "llama_cpp":

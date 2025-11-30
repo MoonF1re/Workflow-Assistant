@@ -1,0 +1,18 @@
+name: open_website
+handler: handlers.pc_actions.open_website
+
+intent_patterns:
+  - 'открой сайт'
+  - 'открой браузер'
+
+slots:
+  - name: site_name
+    type: str
+    required: false
+
+slot_hints:
+  site_name:
+    patterns:
+      # Ловим все после слов "открой/зайди на"
+      # (?P<site_name>...) - имя группы должно совпадать с именем слота
+      - '(?:открой|запусти|зайди на)\s+(?:сайт\s+)?(?P<site_name>.+)'

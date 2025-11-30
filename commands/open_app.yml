@@ -1,6 +1,0 @@
-name: open_app
-handler: handlers.app.open_app
-slots:
-  - name: app
-    type: str
-    required: true
