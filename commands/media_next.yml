@@ -1,0 +1,6 @@
+name: "media_next"
+handler: "handlers.media:media_next"
+examples:
+  - "следующий трек"
+  - "пропусти песню"
+  - "дальше"

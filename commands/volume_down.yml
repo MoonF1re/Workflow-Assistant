@@ -1,0 +1,7 @@
+name: "volume_down"
+handler: "handlers.system:volume_down"
+slots: []
+examples:
+  - "уменьши громкость"
+  - "сделай потише"
+  - "убавь звук"

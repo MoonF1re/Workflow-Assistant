@@ -1,0 +1,6 @@
+name: "media_pause"
+handler: "handlers.media:media_pause"
+examples:
+  - "пауза"
+  - "останови музыку"
+  - "приостанови воспроизведение"

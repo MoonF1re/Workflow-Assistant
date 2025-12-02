@@ -1,0 +1,6 @@
+name: "volume_up"
+handler: "handlers.system:volume_up"
+examples:
+  - "увеличь громкость"
+  - "сделай погромче"
+  - "прибавь звук"

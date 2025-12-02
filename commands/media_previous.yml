@@ -1,0 +1,6 @@
+name: "media_previous"
+handler: "handlers.media:media_previous"
+examples:
+  - "предыдущий трек"
+  - "вернись назад"
+  - "предыдущая песня"

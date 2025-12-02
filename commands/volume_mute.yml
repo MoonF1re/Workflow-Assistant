@@ -1,0 +1,6 @@
+name: "volume_mute"
+handler: "handlers.system:volume_mute"
+examples:
+  - "выключи звук"
+  - "включи звук"
+  - "сделай без звука"

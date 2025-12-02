@@ -1,0 +1,6 @@
+name: "lock_computer"
+handler: "handlers.system:lock_computer"
+examples:
+  - "закрой компьютер"
+  - "заблокируй комп"
+  - "я вышел"

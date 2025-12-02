@@ -1,0 +1,6 @@
+name: "media_play"
+handler: "handlers.media:media_play"
+examples:
+  - "включи музыку"
+  - "запусти воспроизведение"
+  - "продолжить музыку"
