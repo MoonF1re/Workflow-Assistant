@@ -8,4 +8,4 @@ def set_timer(minutes: int = 0, seconds: int = 0):
     if total_seconds == 0:
         return "Вы не указали время для таймера."
 
-    print(f"Запускаю таймер на {total_seconds} сек...")
+    return (f"Запускаю таймер на {total_seconds} сек...")

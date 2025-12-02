@@ -38,7 +38,6 @@ class Registry:
         self.examples_dir = Path(examples_dir)
         self.commands: Dict[str, CommandSpec] = {}
 
-    # ---------- Loading helpers ----------
     def _load_examples_for(self, name: str) -> List[str]:
         # Загружает примеры фраз для команды из файлов
         out: List[str] = []
@@ -104,7 +103,6 @@ class Registry:
 
             slot_hints = data.get("slot_hints", {})
 
-            # load examples from examples/<name>.txt or .yml
             examples = self._load_examples_for(name)
 
             spec = CommandSpec(
@@ -119,7 +117,6 @@ class Registry:
                 print(f"[registry] warning: duplicate command name {name} (overwriting)")
             self.commands[name] = spec
 
-    # ---------- Public ----------
     def list_commands(self) -> List[str]:
         return list(self.commands.keys())
 
@@ -177,15 +174,11 @@ class Registry:
 
 # ---------------- Demo ----------------
 if __name__ == "__main__":
-    # Demo expects a directory structure:
-    # commands/  (with minimal YAMLs)
-    # examples/  (with matching <name>.txt files)
     print("Registry demo (loads commands/ and examples/ relative to cwd)")
     reg = Registry(commands_dir="commands", examples_dir="examples")
     reg.load()
     print("Loaded commands:", reg.list_commands())
 
-    # Show per-command summary
     for name in reg.list_commands():
         spec = reg.find_command(name)
         print("---")

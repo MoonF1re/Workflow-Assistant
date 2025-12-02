@@ -6,6 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # пути
 DATA_DIR = BASE_DIR / "data"
 COMMANDS_DIR = BASE_DIR / "commands"
+EXAMPLES_DIR = BASE_DIR / "examples"
 LOGS_DIR = BASE_DIR / "logs"
 SOUNDS_DIR = DATA_DIR / "sounds"
 NLP_MODEL_PATH = DATA_DIR / "nlp_model"/"nlp_model.pkl"
@@ -37,4 +38,4 @@ BEEP_START = [
 ACCESS_KEY = "ebG6PfQrBJjCcq3DFE2/nyaa9rpzhFqvS1WFh86FMszqlTK7rx+JYA=="
 
 #NLP
-FUZZY_THRESHOLD = 60
+FUZZY_THRESHOLD = 0.85

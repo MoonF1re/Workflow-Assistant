@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+from core.config import FUZZY_THRESHOLD
 
 
 class IntentClassifier:
@@ -22,7 +23,7 @@ class IntentClassifier:
                  embed_model_name: str = "cointegrated/rubert-tiny2", #all-MiniLM-L6-v2
                  use_transformer: bool = True,
                  random_state: int = 42,
-                 fuzzy_threshold: float = 0.85):  # Порог схожести (0.85 = 85%)
+                 fuzzy_threshold: float = FUZZY_THRESHOLD):  # Порог схожести (0.85 = 85%)
         self.random_state = random_state
         self.use_transformer_requested = bool(use_transformer)
         self.use_transformer = self.use_transformer_requested and _HAS_TRANSFORMER
@@ -54,7 +55,6 @@ class IntentClassifier:
             raise ValueError("!!! Примеры команд и их названия должны совпадать !!!")
 
         # 1. Сохраняем примеры для Fuzzy Matching
-        # Мы будем искать ближайшего соседа среди них при предсказании
         self._train_examples = list(zip(texts, intents))
 
         # 2. Стандартное ML обучение
@@ -92,13 +92,10 @@ class IntentClassifier:
         best_intent = None
 
         # Проходим по всем известным примерам
-        # Оптимизация: для больших датасетов (>5к строк) лучше использовать библиотеку rapidfuzz,
-        # но для голосового ассистента стандартный difflib работает достаточно быстро.
         for example_text, example_intent in self._train_examples:
             # SequenceMatcher вычисляет похожесть строк (0.0 ... 1.0)
             ratio = difflib.SequenceMatcher(None, text, example_text).ratio()
 
-            # Если нашли идеальное совпадение - сразу возвращаем
             if ratio == 1.0:
                 return example_intent, 1.0
 
@@ -113,9 +110,7 @@ class IntentClassifier:
 
     def predict_proba(self, texts: List[str]) -> List[Dict[str, float]]:
         """
-        Возвращает вероятности.
-        Внимание: Fuzzy Matching сложно интегрировать в predict_proba пакетно и с честными вероятностями.
-        Здесь реализована логика: если Fuzzy сработал, то вероятность 1.0, иначе ML.
+        Возвращает вероятности для всех команд(интент).
         """
         if self._clf is None or self._encoder is None:
             raise RuntimeError("Модель не обучена. Вызовите сначала fit().")
@@ -159,10 +154,7 @@ class IntentClassifier:
         if fuzzy_res:
             return fuzzy_res  # (intent, score)
 
-        # 2. ML Match (вызываем predict_proba для одного элемента)
-        # Мы дублируем логику predict_proba для одного элемента, чтобы не делать лишнюю работу
-        # Но для простоты вызовем predict_proba (он внутри сделает то же самое, но чуть больше оверхеда)
-        # Оптимизируем: сразу ML
+        # 2. ML Match
         return self._predict_ml_only(text)
 
     def _predict_ml_only(self, text: str) -> Tuple[str, float]:
@@ -179,9 +171,6 @@ class IntentClassifier:
         return best_intent, float(probs[best_idx])
 
     def predict_topk(self, text: str, k: int = 3) -> List[Tuple[str, float]]:
-        # Для TopK Fuzzy Match может только добавить "лидера",
-        # но остальные кандидаты все равно должны прийти из ML.
-        # Поэтому просто используем predict_proba
         proba = self.predict_proba([text])[0]
         items = sorted(proba.items(), key=lambda kv: kv[1], reverse=True)
         return items[:k]
@@ -226,7 +215,7 @@ class IntentClassifier:
             self._ensure_embedder()
 
     def fit_eval(self, texts: List[str], intents: List[str], test_size: float = 0.2, random_state: int = 42):
-        # Аналогично оригиналу
+        # Обучение с Оценкой
         from collections import Counter
         intent_counts = Counter(intents)
         min_count = min(intent_counts.values())

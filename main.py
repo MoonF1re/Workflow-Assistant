@@ -1,7 +1,3 @@
-"""
-Recognizer -> Normalizer -> Registry -> IntentClassifier -> LLM -> Dispatcher
-"""
-
 import time
 import json
 import os
@@ -14,7 +10,7 @@ from core.nlp_parser.intent_classifier import IntentClassifier
 from core.nlp_parser.slot_resolver import SlotResolver
 from core.nlp_parser.slot_llm import VikhrSlotExtractor
 from core.dispatcher import Dispatcher
-from core.config import NLP_MODEL_PATH, COMMANDS_DIR
+from core.config import NLP_MODEL_PATH, COMMANDS_DIR, EXAMPLES_DIR
 from core.logger import logger
 
 MODEL_PATH = Path(NLP_MODEL_PATH)
@@ -23,7 +19,7 @@ MODEL_PATH = Path(NLP_MODEL_PATH)
 # ----- Подготовка подсистем -----
 def prepare_registry(commands_dir: str = None, examples_dir: str = None) -> Registry:
     commands_dir = commands_dir or COMMANDS_DIR
-    examples_dir = examples_dir or (Path(commands_dir).parent / "examples")
+    examples_dir = examples_dir or EXAMPLES_DIR
     reg = Registry(commands_dir=str(commands_dir), examples_dir=str(examples_dir))
     reg.load()
     return reg
@@ -45,7 +41,6 @@ def prepare_intent_classifier(reg: Registry, normalizer: Normalizer, model_path:
     clf.fit(texts, labels)
 
     try:
-        # попытка сохранить модель
         model_path.parent.mkdir(parents=True, exist_ok=True)
         clf.save(str(model_path))
         logger.info(f"[main] Обученный классификатор сохранён в {model_path}")
@@ -116,8 +111,6 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
                 missing_required = required_names - found_names
 
                 # --- ЭТАП 3.2: LLM (только если чего-то не хватает или вообще нет hints) ---
-                # Можно настроить логику: если hints есть, но они не сработали -> зовем LLM
-                # Или если hints покрыли все required -> LLM не зовем (экономия времени!)
 
                 regex_missed_everything = (len(slot_specs) > 0 and not final_slots)
 
@@ -131,9 +124,6 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
                     llm_slots = llm_res.get("slots", {}) if isinstance(llm_res, dict) else {}
                     print(f"   LLM вернул: {llm_slots}")
 
-                    # Объединяем.
-                    # СТРАТЕГИЯ: Regex (надежный) перезаписывает LLM (креативный), если ключи совпадают?
-                    # Или наоборот? Обычно Regex точнее.
                     # Берем всё из LLM, а потом обновляем значениями из Regex
                     merged = llm_slots.copy()
                     merged.update(regex_slots)  # Приоритет у Regex
@@ -197,19 +187,29 @@ def run_stdin_test(backend="ollama", backend_kwargs=None):
     on_command = make_on_command(normalizer, registry, classifier, llm_extractor, dispatcher)
 
     print("Режим ввода (stdin). Введите фразу и нажмите Enter (пустая строка — выход).")
-    while True:
-        try:
-            s = input("> ").strip()
-        except EOFError:
-            break
-        if not s:
-            break
-        on_command(s)
+    try:
+        while True:
+            try:
+                s = input("> ").strip()
+                if s:
+                    on_command(s)
+            except EOFError:
+                break
+            except KeyboardInterrupt:
+                print("\n Выход")
+                break
+    except KeyboardInterrupt:
+        print("\n Выход")
 
 
 # ----- Точка входа -----
 if __name__ == "__main__":
-    MODE = os.environ.get("ASSISTANT_MODE", "mic")  # "mic" или "stdin"
+    print("\nВыберите режим работы:")
+    print("  1 - Режим микрофона (по умолчанию)")
+    print("  2 - Режим консоли")
+    choice = input("Введите номер [1/2]: ").strip()
+    MODE = "mic" if choice in ["", "1"] else "stdin"
+
     LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")
     LLM_KW = {}
     if LLM_BACKEND == "llama_cpp":

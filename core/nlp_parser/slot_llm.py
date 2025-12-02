@@ -41,7 +41,6 @@ class VikhrSlotExtractor:
     def _clean_response(self, text: str) -> str:
         """Удаляет markdown-обвязку (```json ... ```) если она есть."""
         text = text.strip()
-        # Удаляем ```json в начале и ``` в конце
         pattern = r"^```(?:json)?\s*(.*?)\s*```$"
         match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
         if match:
@@ -69,7 +68,6 @@ class VikhrSlotExtractor:
                         return json.loads(candidate)
                     except json.JSONDecodeError:
                         try:
-                            # Fallback для одинарных кавычек
                             return ast.literal_eval(candidate)
                         except Exception:
                             return None
@@ -101,7 +99,7 @@ class VikhrSlotExtractor:
                 else:
                     result[key] = str(value)
             except Exception:
-                # Если не смогли привести тип, оставляем как есть (или можно ставить None)
+                # Если не смогли привести тип, оставляем как есть
                 result[key] = value
 
         return result
@@ -156,7 +154,7 @@ Rules:
             "format": "json"  # Ollama поддерживает форсирование JSON
         }
         try:
-            r = requests.post(url, json=payload, timeout=20)  # Чуть больше таймаут
+            r = requests.post(url, json=payload, timeout=20)
             r.raise_for_status()
             data = r.json()
             return data.get("response", "")
@@ -170,8 +168,6 @@ Rules:
 
     def _call_llama(self, prompt: str, max_tokens: int = 256, temperature: float = 0.1) -> str:
         self._init_llama()
-        # Llama-cpp лучше работает через create_completion с грамматикой, но это сложно.
-        # Оставим простой вызов, но снизим температуру.
         resp = self._llama.create_completion(
             prompt=prompt,
             max_tokens=max_tokens,
@@ -252,10 +248,9 @@ Rules:
 # ---------------- Demo ----------------
 if __name__ == "__main__":
     print("--- Инициализация LLM Extractor ---")
-    # Убедись, что Ollama запущена!
     ext = VikhrSlotExtractor(
         backend="ollama",
-        model_name="llama3:8b",  # Или другая модель
+        model_name="llama3:8b",
         ollama_url="http://localhost:11434"
     )
 
@@ -287,7 +282,7 @@ if __name__ == "__main__":
     ]
 
     for case in test_cases:
-        print(f"\n🧪 Тест: {case['name']}")
+        print(f"\n Тест: {case['name']}")
         print(f"   Вход: '{case['text']}'")
 
         res = ext.extract_slots(

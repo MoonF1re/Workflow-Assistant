@@ -24,7 +24,6 @@ def open_website(site_name: str = None):
     Открывает сайт в браузере по умолчанию.
     """
     if not site_name:
-        # Если сайт не назвали, просто открываем браузер (пустую вкладку или домашнюю)
         webbrowser.open("https://google.com")
         return "Открываю браузер."
 
@@ -51,7 +50,6 @@ def take_screenshot(delay: int = 0):
     """
     Делает скриншот и сохраняет в папку Screenshots.
     """
-    # Папка для сохранения (рядом с main.py или в data)
     save_dir = Path("data/screenshots")
     save_dir.mkdir(parents=True, exist_ok=True)
 

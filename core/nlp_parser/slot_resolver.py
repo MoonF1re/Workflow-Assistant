@@ -1,7 +1,7 @@
 import re
 from typing import Dict, Any, Optional, List
 from core.nlp_parser.registry import Registry
-
+from core.logger import logger
 
 class SlotResolver:
     def __init__(self, registry: Registry):
@@ -31,15 +31,14 @@ class SlotResolver:
             target_type = slot_types.get(slot_name, "str")
 
             for pattern in patterns:
-                # --- ОТЛАДКА: смотрим какой паттерн проверяем ---
-                # print(f"[SlotResolver] Проверяю паттерн: '{pattern}' для слота '{slot_name}' на тексте '{text}'")
+                logger.info(f"[SlotResolver] Проверяю паттерн: '{pattern}' для слота '{slot_name}' на тексте '{text}'")
 
                 try:
                     match = re.search(pattern, text, re.IGNORECASE)
                     if match:
                         if slot_name in match.groupdict():
                             raw_val = match.group(slot_name)
-                            # print(f"[SlotResolver] MATCH! {slot_name} = {raw_val}")
+                            logger.info(f"[SlotResolver] MATCH! {slot_name} = {raw_val}")
                             found_slots[slot_name] = self._cast_value(raw_val, target_type)
                             break
                         else:
@@ -48,7 +47,7 @@ class SlotResolver:
                             found_slots[slot_name] = self._cast_value(raw_val, target_type)
                             break
                 except re.error as e:
-                    print(f"[SlotResolver] Ошибка в регулярке {slot_name}: {pattern} ({e})")
+                    logger.info(f"[SlotResolver] Ошибка в регулярке {slot_name}: {pattern} ({e})")
                     continue
 
         return found_slots
