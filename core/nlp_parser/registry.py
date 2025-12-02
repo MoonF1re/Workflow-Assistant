@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
 import yaml
 import json
+from core.logger import *
 
 
 
@@ -85,12 +86,12 @@ class Registry:
                     data = yaml.safe_load(f) or {}
             except Exception as e:
                 # skip unreadable file
-                print(f"[registry] failed to read {p}: {e}")
+                logger.info(f"[registry] Ошибка прочтения команды {p}: {e}")
                 continue
 
             err = self._validate_card(data, p)
             if err:
-                print(f"[registry] validation error: {err}")
+                logger.info(f"[registry] Ошибка валидации: {err}")
                 continue
 
             name = str(data.get("name")).strip()
@@ -114,7 +115,7 @@ class Registry:
                 filepath=p
             )
             if name in self.commands:
-                print(f"[registry] warning: duplicate command name {name} (overwriting)")
+                logger.info(f"[registry] Ошибка: дубликат имени команды {name}")
             self.commands[name] = spec
 
     def list_commands(self) -> List[str]:
@@ -161,23 +162,13 @@ class Registry:
                 out.append((name, ex))
         return out
 
-    def export_dataset_jsonl(self, path: str) -> None:
-        p = Path(path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with p.open("w", encoding="utf-8") as f:
-            for name, spec in self.commands.items():
-                for ex in spec.examples:
-                    obj = {"text": ex, "intent": name}
-                    f.write(json.dumps(obj, ensure_ascii=False) + "\n")
-
 
 
 # ---------------- Demo ----------------
 if __name__ == "__main__":
-    print("Registry demo (loads commands/ and examples/ relative to cwd)")
     reg = Registry(commands_dir="commands", examples_dir="examples")
     reg.load()
-    print("Loaded commands:", reg.list_commands())
+    print("Загруженные команды:", reg.list_commands())
 
     for name in reg.list_commands():
         spec = reg.find_command(name)
@@ -193,6 +184,3 @@ if __name__ == "__main__":
     print("\nDataset size:", len(texts))
     if texts:
         print("sample:", texts[:5], labels[:5])
-
-    reg.export_dataset_jsonl("out/intent_dataset.jsonl")
-    print("Exported dataset to out/intent_dataset.jsonl")

@@ -1,12 +1,5 @@
 name: take_screenshot
 handler: handlers.pc_actions.take_screenshot
-
-intent_patterns:
-  - 'сделай скриншот'
-  - 'скриншот'
-  - 'сфоткай экран'
-  - 'скрин'
-
 slots:
   - name: delay
     type: int
@@ -15,5 +8,4 @@ slots:
 slot_hints:
   delay:
     patterns:
-      # "через 5 секунд", "таймер 3 секунды" (используем логику чисел)
       - 'через\s*(?P<delay>\d+)'

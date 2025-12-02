@@ -1,0 +1,2 @@
+name: write_text
+handler: handlers.pc_actions.write_text

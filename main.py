@@ -8,7 +8,7 @@ from core.nlp_parser.normalizer import Normalizer
 from core.nlp_parser.registry import Registry
 from core.nlp_parser.intent_classifier import IntentClassifier
 from core.nlp_parser.slot_resolver import SlotResolver
-from core.nlp_parser.slot_llm import VikhrSlotExtractor
+from core.nlp_parser.slot_llm import SlotExtractor
 from core.dispatcher import Dispatcher
 from core.config import NLP_MODEL_PATH, COMMANDS_DIR, EXAMPLES_DIR
 from core.logger import logger
@@ -49,23 +49,23 @@ def prepare_intent_classifier(reg: Registry, normalizer: Normalizer, model_path:
     return clf
 
 
-def prepare_llm_extractor(backend: str = "ollama", backend_kwargs: dict = None) -> VikhrSlotExtractor:
+def prepare_llm_extractor(backend: str = "ollama", backend_kwargs: dict = None) -> SlotExtractor:
     backend_kwargs = backend_kwargs or {}
     if backend == "ollama":
         ollama_url = backend_kwargs.get("ollama_url", "http://localhost:11434")
-        return VikhrSlotExtractor(backend="ollama", ollama_url=ollama_url, model_name='llama3:8b')
+        return SlotExtractor(backend="ollama", ollama_url=ollama_url, model_name='llama3:8b')
     elif backend == "llama_cpp":
         model_path = backend_kwargs.get("model_path")
         if not model_path:
             raise RuntimeError("llama_cpp backend requires 'model_path' in backend_kwargs")
-        return VikhrSlotExtractor(backend="llama_cpp", llama_model_path=model_path, llama_kwargs=backend_kwargs.get("llama_kwargs", {}))
+        return SlotExtractor(backend="llama_cpp", llama_model_path=model_path, llama_kwargs=backend_kwargs.get("llama_kwargs", {}))
     else:
         raise RuntimeError(f"Неподдерживаемый LLM backend: {backend}")
 
 
 # ----- Создание обработчика команд (вызывается Recognizer) -----
 def make_on_command(normalizer: Normalizer, registry: Registry, classifier: IntentClassifier,
-                    llm_extractor: VikhrSlotExtractor, dispatcher: Dispatcher):
+                    llm_extractor: SlotExtractor, dispatcher: Dispatcher):
     slot_resolver = SlotResolver(registry)
 
     def on_command(raw_text: str):
@@ -79,7 +79,6 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
             try:
                 intent_label, prob = classifier.predict(normalized)
             except Exception:
-                # очень простой fallback: если predict падает, считаем неизвестно
                 intent_label, prob = None, 0.0
 
             # Вывод минимальной информации
@@ -89,6 +88,7 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
                 print(f'-> интент: {intent_label} (p={prob:.2f})')
             else:
                 print('-> интент: <не распознан>')
+                return None
 
             # 3) Извлекаем слоты
             cmd_spec = registry.find_command(intent_label)
@@ -96,40 +96,70 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
 
             final_slots = {}
 
-            if slot_specs:
-                # --- ЭТАП 3.1: SlotResolver (Regex) ---
-                print("-> Запуск SlotResolver...")
-                regex_slots = slot_resolver.resolve(intent_label, normalized)
-                if regex_slots:
-                    print(f"   Regex нашел: {regex_slots}")
+            if not slot_specs:
+                print("-> Слотов нет, пропускаем извлечение")
+            else:
+                # ПРОВЕРКА 1: Проверяем наличие регулярных выражений в карточке
+                has_regex_patterns = False
+                if cmd_spec and cmd_spec.slot_hints:
+                    for slot_name, hints in cmd_spec.slot_hints.items():
+                        patterns = hints.get("patterns", [])
+                        if patterns:  # Если есть хотя бы один паттерн
+                            has_regex_patterns = True
+                            break
 
-                final_slots.update(regex_slots)
+                regex_slots = {}
 
-                # Проверяем, каких обязательных слотов не хватает
+                # Запускаем SlotResolver только если есть regex-паттерны
+                if has_regex_patterns:
+                    print("-> Запуск SlotResolver...")
+                    regex_slots = slot_resolver.resolve(intent_label, normalized)
+                    if regex_slots:
+                        print(f"   Regex нашел: {regex_slots}")
+                else:
+                    print("-> Regex паттернов нет, пропускаем SlotResolver")
+
+                # Определяем обязательные слоты
                 required_names = {s['name'] for s in slot_specs if s.get('required')}
-                found_names = set(final_slots.keys())
+                found_names = set(regex_slots.keys())
                 missing_required = required_names - found_names
 
-                # --- ЭТАП 3.2: LLM (только если чего-то не хватает или вообще нет hints) ---
+                # Решаем, нужно ли вызывать LLM
+                need_llm = False
 
-                regex_missed_everything = (len(slot_specs) > 0 and not final_slots)
+                if not has_regex_patterns:
+                    # Если нет regex - сразу к LLM
+                    need_llm = True
+                    print("-> Regex паттернов нет, вызываем LLM")
+                elif missing_required:
+                    # Если есть regex, но не хватает обязательных слотов
+                    need_llm = True
+                    print(f"-> Не хватает обязательных слотов {missing_required}, вызываем LLM")
+                elif not regex_slots and slot_specs:
+                    # Если были regex паттерны, но они ничего не нашли (возможно, плохие паттерны)
+                    need_llm = True
+                    print("-> Regex паттерны ничего не нашли, вызываем LLM")
 
-                if missing_required or regex_missed_everything:
-                    print(f"-> Не хватает обязательных слотов {missing_required}, вызываю LLM...")
+                # Вызываем LLM если нужно
+                if need_llm:
                     # Передаем пример из registry, если есть
                     example_text = cmd_spec.examples[0] if cmd_spec.examples else None
 
-                    llm_res = llm_extractor.extract_slots(intent_label, normalized, slot_specs, example=example_text)
+                    llm_res = llm_extractor.extract_slots(
+                        intent_label, normalized, slot_specs, example=example_text
+                    )
 
                     llm_slots = llm_res.get("slots", {}) if isinstance(llm_res, dict) else {}
                     print(f"   LLM вернул: {llm_slots}")
 
-                    # Берем всё из LLM, а потом обновляем значениями из Regex
+                    # Объединяем результаты: приоритет у regex
                     merged = llm_slots.copy()
-                    merged.update(regex_slots)  # Приоритет у Regex
+                    merged.update(regex_slots)  # regex перезапишет llm при конфликте
                     final_slots = merged
                 else:
-                    print("-> Все обязательные слоты найдены через Regex. LLM пропущен.")
+                    # Используем только regex результаты
+                    final_slots = regex_slots
+                    print("-> Все слоты найдены через Regex, LLM не нужен")
 
             print(f"Итоговые слоты: {final_slots}")
 
@@ -146,7 +176,6 @@ def make_on_command(normalizer: Normalizer, registry: Registry, classifier: Inte
             else:
                 if intent_label:
                     print("-> обработчик для этого интента не указан (handler отсутствует)")
-                # если интент не распознан — ничего не вызываем
 
             total = time.perf_counter() - t0
             print("======")

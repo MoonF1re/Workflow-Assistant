@@ -7,7 +7,7 @@ import pvporcupine
 from vosk import Model, KaldiRecognizer
 from playsound import playsound
 from queue import Queue
-from core.config import WAKE_WORD, VOSK_MODEL_PATH, SAMPLE_RATE, BEEP_ANSWER, BEEP_WAKE, BEEP_START, ACCESS_KEY, LISTEN_TIME
+from core.config import WAKE_WORD, VOSK_MODEL_PATH, SAMPLE_RATE, BEEP_ANSWER, BEEP_WAKE, BEEP_START, ACCESS_KEY, LISTEN_TIME, TIME_SLEEP
 from core.logger import logger
 
 def play_random_start():
@@ -72,6 +72,7 @@ class Recognizer:
             if result >= 0:
                 logger.info("Wake word активировано!")
                 play_random_wake()
+                time.sleep(TIME_SLEEP)
 
                 command_text = self.listen_command()
                 if command_text:

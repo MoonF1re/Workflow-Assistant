@@ -145,10 +145,6 @@ class IntentClassifier:
         return out
 
     def predict(self, text: str) -> Tuple[str, float]:
-        """
-        Предсказывает интент для одного текста.
-        Сначала проверяет Fuzzy Match, затем ML.
-        """
         # 1. Fuzzy Match
         fuzzy_res = self._predict_fuzzy(text)
         if fuzzy_res:

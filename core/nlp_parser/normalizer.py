@@ -182,7 +182,7 @@ class Normalizer:
         }
 
 
-# --------------------------------
+# ---------------DEMO-----------------
 if __name__ == "__main__":
     n = Normalizer(convert_numbers=True, lemmatize=True)
 

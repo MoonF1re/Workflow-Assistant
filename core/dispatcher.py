@@ -120,7 +120,6 @@ class Dispatcher:
                 return {"ok": False, "status": "error", "result": None, "error": errstr, "used_args": args_kwargs, "missing": [], "duration": duration}
             return {"ok": True, "status": "ok", "result": res, "error": None, "used_args": args_kwargs, "missing": [], "duration": duration}
         except TimeoutError:
-            # cannot kill thread here; just report timeout
             duration = time.perf_counter() - t0
             return {"ok": False, "status": "timeout", "result": None, "error": f"handler timed out after {timeout}s", "used_args": args_kwargs, "missing": [], "duration": duration}
         except Exception as e:

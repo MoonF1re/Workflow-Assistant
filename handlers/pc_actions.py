@@ -68,3 +68,6 @@ def take_screenshot(delay: int = 0):
         return f"Скриншот сохранён: {filename}"
     except Exception as e:
         return f"Ошибка при создании скриншота: {e}"
+
+def write_text():
+    print("Это функция выводит текст")

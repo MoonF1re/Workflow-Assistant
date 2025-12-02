@@ -19,7 +19,7 @@ except Exception:
     _HAS_LLAMA_CPP = False
 
 
-class VikhrSlotExtractor:
+class SlotExtractor:
     def __init__(self,
                  backend: str = "ollama",
                  ollama_url: str = "http://localhost:11434",
@@ -248,7 +248,7 @@ Rules:
 # ---------------- Demo ----------------
 if __name__ == "__main__":
     print("--- Инициализация LLM Extractor ---")
-    ext = VikhrSlotExtractor(
+    ext = SlotExtractor(
         backend="ollama",
         model_name="llama3:8b",
         ollama_url="http://localhost:11434"

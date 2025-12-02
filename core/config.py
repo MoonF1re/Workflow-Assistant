@@ -15,13 +15,15 @@ NLP_MODEL_PATH = DATA_DIR / "nlp_model"/"nlp_model.pkl"
 # настройки
 LANGUAGE = "ru-RU"
 SAMPLE_RATE = 16000
-LISTEN_TIME = 2.5
+LISTEN_TIME = 1.0
+TIME_SLEEP = 1.2
 
 # модель Vosk
 VOSK_MODEL_PATH = DATA_DIR / "vosk_model_small"
 
 # Wake word
-WAKE_WORD = DATA_DIR/"wakewords"/"Sebastian_en_windows_v3_0_0.ppn"
+#WAKE_WORD = DATA_DIR/"wakewords"/"Sebastian_en_windows_v3_0_0.ppn"
+WAKE_WORD = DATA_DIR/"wakewords"/"Victor_en_windows_v3_0_0.ppn"
 
 BEEP_WAKE = [
     SOUNDS_DIR / "What_do_you_order.mp3",
